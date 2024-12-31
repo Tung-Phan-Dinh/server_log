@@ -1,45 +1,25 @@
 import pandas as pd
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, r2_score
 
-# Giả định dữ liệu server log
-data = {
-    'Total_Requests': [1000, 1500, 1200, 2000, 2500],
-    'HTTP_2xx': [900, 1400, 1100, 1900, 2400],
-    'HTTP_4xx': [50, 50, 70, 60, 40],
-    'HTTP_5xx': [50, 50, 30, 40, 60],
-    'CPU_Usage': [60, 70, 65, 80, 90],
-    'RAM_Usage': [70, 75, 72, 85, 88],
-    'Error_Rate': [10, 6.67, 8.33, 5, 4]
-}
+# Define the file paths
+input_file_path = '/Users/phamthiphuongthuy/Desktop/Intern/server_log/data/parsed_log/kong-logs-acesss.2024-12-15T00_00_00.000Z-2024-12-15T00_15_00.000Z'
+output_file_path = '/Users/phamthiphuongthuy/Desktop/Intern/server_log/grouped_logs_20s.csv'
 
-# Chuyển dữ liệu thành DataFrame
-df = pd.DataFrame(data)
+# Read the log data
+log_df = pd.read_csv(input_file_path)
 
-# Xác định biến độc lập (X) và biến mục tiêu (y)
-X = df[['Total_Requests', 'HTTP_2xx', 'HTTP_4xx', 'HTTP_5xx', 'CPU_Usage', 'RAM_Usage']]
-y = df['Error_Rate']
+# Convert the 'datetime' column to a pandas datetime object
+log_df['datetime'] = pd.to_datetime(log_df['datetime'], format='%d/%b/%Y:%H:%M:%S +0000')
 
-# Chia dữ liệu thành tập huấn luyện và kiểm tra
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Set the 'datetime' column as the index
+log_df.set_index('datetime', inplace=True)
 
-# Sử dụng Random Forest Regression
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
+# Resample the data to 20-second intervals and aggregate
+grouped_df = log_df.resample('20S').sum()
 
-# Dự đoán
-y_pred = model.predict(X_test)
+# Reset the index to make 'datetime' a column again
+grouped_df.reset_index(inplace=True)
 
-# Đánh giá mô hình
-mae = mean_absolute_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
+# Save the grouped data to a new CSV file
+grouped_df.to_csv(output_file_path, index=False)
 
-print(f"Mean Absolute Error: {mae}")
-print(f"R2 Score: {r2}")
-
-# Dự báo phần trăm lỗi cho giá trị mới
-new_data = [[3000, 2900, 50, 50, 85, 90]]  # Ví dụ dữ liệu mới
-predicted_error_rate = model.predict(new_data)
-print(f"Phần trăm lỗi dự báo: {predicted_error_rate[0]}%")
+print(f"Grouped logs have been saved to {output_file_path}")
